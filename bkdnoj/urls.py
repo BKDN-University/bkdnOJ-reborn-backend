@@ -18,12 +18,14 @@ urlpatterns = [
     path('', include('userprofile.urls')),
     # Organization
     path('', include('organization.urls')),
-    # Organization
+    # Problem
     path('', include('problem.urls')),
-    # Judge
-    path('', include('judger.restful.urls')),
     # Submission
     path('', include('submission.urls')),
+    # Judge
+    path('', include('judger.restful.urls')),
+    # Contest 
+    path('', include('compete.urls')),
 ]
 
 # urlpatterns = format_suffix_patterns(urlpatterns)

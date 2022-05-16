@@ -32,6 +32,10 @@ class UserProfile(TimeStampedModel):
     def member_of_orgs(self):
         member_of_orgs = OrgMembership.objects.filter(user=self)
         return member_of_orgs
+    
+    @property
+    def username(self):
+        return self.owner.username
 
     def set_image_to_default(self):
         self.avatar.delete(save=False) # delete old image file

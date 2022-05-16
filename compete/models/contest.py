@@ -1,6 +1,22 @@
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+from django.db import models, transaction
+from django.db.models import CASCADE, Q
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.functional import cached_property
+from django.utils.translation import gettext, gettext_lazy as _
+# from jsonfield import JSONField
+# from lupa import LuaRuntime
+
 from django.utils.translation import gettext_lazy as _
 from django.db import models
 from django_extensions.db.models import TimeStampedModel
+from . import contest_format
+
+from problem.models import Problem
+from userprofile.models import UserProfile
+from organization.models import Organization
 
 class Contest(TimeStampedModel):
     SCOREBOARD_VISIBLE = 'V'
@@ -30,7 +46,7 @@ class Contest(TimeStampedModel):
         help_text=_('These users will be able to edit the contest.'),
         related_name='authored_contests')
     curators = models.ManyToManyField(
-        Profile, verbose_name=_('curators'),
+        UserProfile, verbose_name=_('curators'),
         help_text=_('These users will be able to edit the contest, but will not be '
                     'listed as authors.'),
         related_name='curated_contests', blank=True)
@@ -90,8 +106,9 @@ class Contest(TimeStampedModel):
     join_organizations = models.ManyToManyField(Organization, blank=True, verbose_name=_('join organizations'),
                                                 help_text=_('If non-empty, only these organizations may join '
                                                             'the contest'), related_name='join_only_contests')
-    classes = models.ManyToManyField(Class, blank=True, verbose_name=_('classes'),
-                                     help_text=_('If organization private, only these classes may see the contest'))
+    # classes = models.ManyToManyField(
+    #     Class, blank=True, verbose_name=_('classes'),
+    #     help_text=_('If organization private, only these classes may see the contest'))
     access_code = models.CharField(
         verbose_name=_('access code'), blank=True, default='', max_length=255,
         help_text=_('An optional code to prompt contestants before they are allowed '
@@ -121,11 +138,11 @@ class Contest(TimeStampedModel):
         verbose_name=_('contest format'), default='default', max_length=32,
         choices=contest_format.choices(), help_text=_('The contest format module to use.'))
 
-    format_config = JSONField(
-        verbose_name=_('contest format configuration'), null=True, blank=True,
-        help_text=_('A JSON object to serve as the configuration for the chosen contest format '
-                    'module. Leave empty to use None. Exact format depends on the contest format '
-                    'selected.'))
+    # format_config = JSONField(
+    #     verbose_name=_('contest format configuration'), null=True, blank=True,
+    #     help_text=_('A JSON object to serve as the configuration for the chosen contest format '
+    #                 'module. Leave empty to use None. Exact format depends on the contest format '
+    #                 'selected.'))
     run_pretests_only = models.BooleanField(
         verbose_name=_('run pretests only'),
         help_text=_('Whether judges should grade pretests only, versus all '
@@ -149,9 +166,11 @@ class Contest(TimeStampedModel):
         UserProfile, verbose_name=_('exclude from ratings'), blank=True,
         related_name='rate_exclude+')
     ## ------------------------------ DATA
-    problems = models.ManyToManyField(Problem, verbose_name=_('problems'), through='ContestProblem')
-    tags = models.ManyToManyField(
-        ContestTag, verbose_name=_('contest tags'), blank=True, related_name='contests')
+    problems = models.ManyToManyField(
+        Problem, 
+        verbose_name=_('problems'), through='ContestProblem')
+    # tags = models.ManyToManyField(
+    #     ContestTag, verbose_name=_('contest tags'), blank=True, related_name='contests')
     ## ------------------------------ UNUSED
     show_short_display = models.BooleanField(
         verbose_name=_('show short form settings display'),
@@ -290,9 +309,22 @@ class Contest(TimeStampedModel):
     def ended(self):
         return self.end_time < self._now
 
+    """
+        TESTED:
+        Return a QuerySet of user `id`, belongs to the authors
+    """
     @cached_property
     def author_ids(self):
-        return Contest.authors.through.objects.filter(contest=self).values_list('profile_id', flat=True)
+        # return Contest.authors.through.objects.filter(contest=self).values_list('', flat=True)
+        return self.authors.values_list('owner__id', flat=True)
+
+    """
+        TESTED:
+        Return a QuerySet of user `username`, belongs to the authors
+    """
+    @cached_property
+    def author_usernames(self):
+        return self.authors.values_list('owner__username', flat=True)
 
     @cached_property
     def editor_ids(self):
@@ -463,7 +495,7 @@ class Contest(TimeStampedModel):
                 is_rated=True, end_time__range=(self.end_time, self._now),
             ).order_by('end_time'):
                 rate_contest(contest)
-
+    
     class Meta:
         permissions = (
             ('see_private_contest', _('See private contests')),

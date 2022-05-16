@@ -1,8 +1,22 @@
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.utils.translation import gettext_lazy as _
+from django.utils.functional import cached_property
+from django.utils import timezone
 from django.db import models
+from django.db.models import CASCADE
 from django_extensions.db.models import TimeStampedModel
 
+from problem.models import Problem
+from userprofile.models import UserProfile
+from submission.models import Submission
 from .contest import Contest
+
+__all__ = ['ContestParticipation', 'ContestProblem', 'ContestSubmission',]
+
+class MinValueOrNoneValidator(MinValueValidator):
+    def compare(self, a, b):
+        return a is not None and b is not None and super().compare(a, b)
 
 class ContestParticipation(TimeStampedModel):
     LIVE = 0
@@ -11,7 +25,7 @@ class ContestParticipation(TimeStampedModel):
     contest = models.ForeignKey(
         Contest, verbose_name=_('associated contest'), related_name='users', on_delete=CASCADE)
     user = models.ForeignKey(
-        Profile, verbose_name=_('user'), related_name='contest_history', on_delete=CASCADE)
+        UserProfile, verbose_name=_('user'), related_name='contest_history', on_delete=CASCADE)
     real_start = models.DateTimeField(
         verbose_name=_('start time'), default=timezone.now, db_column='start')
     score = models.FloatField(
@@ -26,8 +40,8 @@ class ContestParticipation(TimeStampedModel):
     virtual = models.IntegerField(
         verbose_name=_('virtual participation id'), default=LIVE,
         help_text=_('0 means non-virtual, otherwise the n-th virtual participation.'))
-    format_data = JSONField(
-        verbose_name=_('contest format specific data'), null=True, blank=True)
+    # format_data = JSONField(
+    #     verbose_name=_('contest format specific data'), null=True, blank=True)
 
     def recompute_results(self):
         with transaction.atomic():
