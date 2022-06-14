@@ -17,7 +17,7 @@ SECRET_KEY = '8u923hr45677ujhbvcde4r56789pedasc9ijnjk192e8uwydgvdbhnjkiudwyhdn2j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['1509.ddns.net', 'localhost']
+ALLOWED_HOSTS = ['localhost']
 
 # Application definition
 
@@ -140,7 +140,7 @@ CORS_ORIGIN_ALLOW_ALL=True
 # ]
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = ['http://1509.ddns.net:3000', 'http://localhost:3000']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:80']
 
 # REST Framework settings
 REST_FRAMEWORK = {
