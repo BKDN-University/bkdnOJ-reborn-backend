@@ -3,24 +3,37 @@ from rest_framework import serializers
 
 from auth.serializers import UserMoreDetailSerializer
 
-from organization.models import OrgMembership
+from auth.serializers import UserSerializer
 from organization.serializers import OrganizationSerializer
 from .models import UserProfile
 
-class MemberOfOrgSerializer(serializers.Serializer):
-    org = OrganizationSerializer()
-    role_label = serializers.CharField()
-    ranking = serializers.IntegerField()
-
+class UserProfileBasicSerializer(serializers.ModelSerializer):
     class Meta:
-        model = OrgMembership
-        fields = ('org', 'role_label', 'ranking')
+        model = UserProfile
+        fields = ['first_name', 'last_name', 'username', 'avatar']
 
-class UserProfileSerializer(serializers.HyperlinkedModelSerializer):
-    owner = UserMoreDetailSerializer(read_only=True)
-    member_of_orgs = MemberOfOrgSerializer(many=True, read_only=True)
+class UserProfileSerializer(serializers.ModelSerializer):
+    owner = UserSerializer(required=False)
+    current_contest = serializers.SerializerMethodField('get_current_contest')
+
+    def get_current_contest(self, instance):
+        if (instance.current_contest == None):
+            return None
+
+        contest = instance.current_contest.contest
+        return { 
+            'contest' : {
+                'key': contest.key, 
+                'name': contest.name, 
+                'start_time': contest.start_time, 
+                'end_time': contest.end_time, 
+                'time_limit': contest.time_limit, 
+                'is_rated': contest.is_rated,
+            },
+            'virtual': instance.current_contest.virtual,
+        }
 
     class Meta:
         model = UserProfile
-        fields = ['first_name', 'last_name', 'avatar', 'description', 'global_ranking',
-            'owner', 'member_of_orgs']
+        fields = ['owner', 'first_name', 'last_name', 'username', 'avatar',
+            'about', 'timezone', 'language', 'points', 'rating', 'current_contest']

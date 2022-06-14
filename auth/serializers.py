@@ -10,11 +10,15 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, Toke
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super(MyTokenObtainPairSerializer, self).validate(attrs)
-        data.update({'user': {
+        user = {
             'username': self.user.username,
-            'is_staff': self.user.is_staff,
-            'is_superuser': self.user.is_superuser,
-        }})
+            'email': self.user.email,
+        }
+        if self.user.is_staff:
+            user['is_staff'] = True
+        if self.user.is_superuser:
+            user['is_superuser'] = True
+        data.update({ 'user': user })
         return data
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -50,11 +54,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 from django.contrib.auth.models import Group, User
 from rest_framework import serializers
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'id', 'username', 'email', 'is_staff', 'is_superuser',
-            'is_active', 'date_joined', 'last_login']#, 'groups']
+        fields = ['id', 'username', 'email', 'is_staff', 'is_superuser']
 
 class UserDetailSerializer(UserSerializer):
     class Meta:
@@ -68,7 +71,7 @@ class UserMoreDetailSerializer(UserSerializer):
         fields = ['url', 'id', 'username', 'email', 'is_staff', 'is_superuser',
             'is_active', 'date_joined', 'last_login', 'groups']
 
-class GroupSerializer(serializers.HyperlinkedModelSerializer):
+class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
-        fields = ['url', 'name', 'user_set']
+        fields = ['name', 'user_set']

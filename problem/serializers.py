@@ -1,28 +1,30 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
 from organization.models import Organization
 
+from userprofile.models import UserProfile
 from .models import Problem, ProblemTestProfile, TestCase
+
 import logging
 logger = logging.getLogger(__name__)
 
-
-class ProblemBasicSerializer(serializers.HyperlinkedModelSerializer):
+class ProblemBasicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Problem 
-        fields = ['url', 'shortname', 'title']
+        fields = ['shortname', 'title']
         lookup_field = 'shortname'
         extra_kwargs = {
             'url': {'lookup_field': 'shortname'}
         }
 
-class ProblemBriefSerializer(serializers.HyperlinkedModelSerializer):
+class ProblemBriefSerializer(serializers.ModelSerializer):
     class Meta:
         model = Problem 
-        fields = ['url', 'shortname', 'title', 'solved_count', 
-            'attempted_count', 'points', 'is_published', 'is_privated_to_orgs']
+        fields = ['shortname', 'title', 'solved_count', 
+            'attempted_count', 'points', 'is_public', 'is_organization_private']
         lookup_field = 'shortname'
         extra_kwargs = {
             'url': {'lookup_field': 'shortname'}
@@ -59,15 +61,35 @@ class ProblemSerializer(serializers.HyperlinkedModelSerializer):
         queryset=Organization.objects.all(), many=True, slug_field="shortname", required=False 
     )
     authors = serializers.SlugRelatedField(
-        queryset=User.objects.all(), many=True, slug_field="username", 
+        queryset=UserProfile.objects.all(), many=True, slug_field="username", required=False,
     )
     collaborators = serializers.SlugRelatedField(
-        queryset=User.objects.all(), many=True, slug_field="username", required=False,
+        queryset=UserProfile.objects.all(), many=True, slug_field="username", required=False,
     )
     reviewers = serializers.SlugRelatedField(
-        queryset=User.objects.all(), many=True, slug_field="username", required=False,
+        queryset=UserProfile.objects.all(), many=True, slug_field="username", required=False,
     )
     allowed_languages = LanguageBasicSerializer(many=True, required=False)
+
+    def to_internal_value(self, data):
+        profiles = ['authors', 'collaborators', 'reviewers']
+        qs = UserProfile.objects.select_related('owner')
+        profiles_val = {}
+
+        for prf in profiles:
+            usernames = data.pop(prf, [])
+            profile_ins = []
+            for uname in usernames:
+                p = qs.filter(owner__username=uname)
+                if p == None:
+                    raise ValidationError(f"User '{uname}' does not exist.")
+                profile_ins.append(p.first().id)
+            profiles_val[prf] = profile_ins
+            
+        val_data = super().to_internal_value(data)
+        for k, v in profiles_val.items():
+            val_data[k] = v
+        return val_data
 
     class Meta:
         model = Problem 
@@ -78,8 +100,8 @@ class ProblemSerializer(serializers.HyperlinkedModelSerializer):
             'authors', 'collaborators', 'reviewers',
 
             'allowed_languages',
-            'is_published',
-            'is_privated_to_orgs', 'organizations',
+            'is_public',
+            'is_organization_private', 'organizations',
             'points', 'short_circuit', 'partial',
 
             'submission_visibility_mode', 'solved_count', 'attempted_count',
@@ -96,6 +118,25 @@ class ProblemSerializer(serializers.HyperlinkedModelSerializer):
             langs = validated_data.pop('allowed_languages')
             instance.allowed_languages.set(langs)
         return super().update(instance, validated_data)
+
+
+class ProblemInContestSerializer(ProblemSerializer):
+    class Meta:
+        model = Problem 
+        fields = [
+            'shortname', 'title', 'content', 'pdf',
+            'source', 'time_limit', 'memory_limit',
+            'authors', 'collaborators', 'reviewers',
+            'allowed_languages',
+            #'is_public',
+            #'is_organization_private', 'organizations',
+            #'points', 'short_circuit', 'partial',
+            'submission_visibility_mode',
+            #'solved_count', 'attempted_count',
+        ]
+    
+    def update(self, instance, validated_data):
+        raise NotImplementedError
 
 class ProblemTestProfileSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:

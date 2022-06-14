@@ -1,6 +1,9 @@
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
 from pathlib import Path
 from datetime import timedelta
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,8 +78,12 @@ WSGI_APPLICATION = 'bkdnoj.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': os.getenv('POSTGRES_NAME'),
+        'USER': os.getenv('POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        'HOST': os.getenv('POSTGRES_HOST'),
+        'PORT': os.getenv('POSTGRES_PORT'),
     }
 }
 
@@ -139,16 +146,16 @@ CSRF_TRUSTED_ORIGINS = ['http://1509.ddns.net:3000', 'http://localhost:3000']
 REST_FRAMEWORK = {
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'DEFAULT_PAGINATION_CLASS': 'helpers.custom_pagination.PageCountPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
 }
 
 # SimpleJWT Settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=180),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60*5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
@@ -173,6 +180,12 @@ LOGGING = {
     },
 }
 
+# --------- Credits to DMOJ
+# Refer to dmoj.ca/post/103-point-system-rework
+DMOJ_PP_STEP = 0.95
+DMOJ_PP_ENTRIES = 100
+DMOJ_PP_BONUS_FUNCTION = lambda n: 300 * (1 - 0.997 ** n)  # noqa: E731
+
 # --------- Site settings
 BKDNOJ_PROBLEM_DATA_ROOT=os.path.join(MEDIA_ROOT, 'problem_data')
 BKDNOJ_PROBLEM_PDF_ROOT=os.path.join(MEDIA_ROOT, 'problem_pdf')
@@ -181,15 +194,20 @@ BKDNOJ_PROBLEM_MAX_TIME_LIMIT=20.0 # 20 seconds
 BKDNOJ_PROBLEM_MIN_TIME_LIMIT=0.1 # 0.1 second = 100 milliseconds
 BKDNOJ_PROBLEM_MAX_MEMORY_LIMIT=1024*1024 # 1024*1024 kB = 1024 MB = 1GB
 BKDNOJ_PROBLEM_MIN_MEMORY_LIMIT=64*1024 # 64*1024 KB = 64 MB
+BKDNOJ_PROBLEM_MAX_OUTPUT_PREFIX=2**30
+BKDNOJ_PROBLEM_MAX_OUTPUT_LIMIT=2**30
 BKDNOJ_PROBLEM_ACCEPTABLE_STATEMENT_PDF = set(['statement.pdf', 'problem.pdf', 'prob.pdf'])
 BKDNOJ_PROBLEM_STATEMENT_PDF_FILENAME   = 'problem.pdf'
 BKDNOJ_PROBLEM_DATA_IN_FILE_EXT         = ('.in',  '.input',  '.inp', '.i', )
 BKDNOJ_PROBLEM_DATA_ANS_FILE_EXT        = ('.out', '.output', '.ans', '.a', )
 BKDNOJ_PROBLEM_ACCEPTABLE_CONFIG_EXT = set(['.ini', '.conf'])
 BKDNOJ_PROBLEM_CONFIG_TOKEN_LENGTH = 2**16
-BKDNOJ_SUBMISSION_LIMIT = 3
-BKDNOJ_SUBMISSION_OUTPUT_PREFIX = 200
-BKDNOJ_SUBMISSION_OUTPUT_LIMIT = int(1e12)
+BKDNOJ_SUBMISSION_LIMIT = 5
+BKDNOJ_DEFAULT_SUBMISSION_OUTPUT_PREFIX = int(1000)
+BKDNOJ_DEFAULT_SUBMISSION_OUTPUT_LIMIT = int(1e7)
+
+DEFAULT_USER_TIME_ZONE = 'Asia/Ho_Chi_Minh'
+DEFAULT_USER_LANGUAGE = 'PY3'
 
 #
 EVENT_DAEMON_USE = False
